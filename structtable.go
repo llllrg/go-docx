@@ -104,12 +104,42 @@ func (t *Table) UnmarshalXML(d *xml.Decoder, _ xml.StartElement) error {
 	return nil
 }
 
+type WTableInd struct {
+	XMLName xml.Name `xml:"w:tblInd,omitempty"`
+	W       int64    `xml:"w:w,attr"`
+	Type    string   `xml:"w:type,attr"`
+}
+
+// UnmarshalXML ...
+func (t *WTableInd) UnmarshalXML(d *xml.Decoder, start xml.StartElement) (err error) {
+	for _, attr := range start.Attr {
+		if attr.Value == "" {
+			continue
+		}
+		switch attr.Name.Local {
+		case "w":
+			t.W, err = GetInt64(attr.Value)
+			if err != nil {
+				return err
+			}
+		case "type":
+			t.Type = attr.Value
+		default:
+			// ignore other attributes
+		}
+	}
+	// Consume the end element
+	_, err = d.Token()
+	return err
+}
+
 // WTableProperties is an element that represents the properties of a table in Word document.
 type WTableProperties struct {
 	XMLName       xml.Name `xml:"w:tblPr,omitempty"`
 	Position      *WTablePositioningProperties
 	Style         *WTableStyle
 	Width         *WTableWidth
+	Ind           *WTableInd
 	Justification *Justification `xml:"w:jc,omitempty"`
 	TableBorders  *WTableBorders `xml:"w:tblBorders"`
 	Look          *WTableLook
@@ -142,6 +172,12 @@ func (t *WTableProperties) UnmarshalXML(d *xml.Decoder, _ xml.StartElement) erro
 			case "tblW":
 				t.Width = new(WTableWidth)
 				err = d.DecodeElement(t.Width, &tt)
+				if err != nil && !strings.HasPrefix(err.Error(), "expected") {
+					return err
+				}
+			case "tblInd":
+				t.Ind = new(WTableInd)
+				err = d.DecodeElement(t.Ind, &tt)
 				if err != nil && !strings.HasPrefix(err.Error(), "expected") {
 					return err
 				}
